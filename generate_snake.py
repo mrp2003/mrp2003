@@ -4,6 +4,8 @@ import time
 
 import requests
 
+import snake_solver
+
 
 GITHUB_GRAPHQL_URL = "https://api.github.com/graphql"
 GRID_HEIGHT = 7
@@ -218,44 +220,26 @@ def get_eat_times(route):
 
 
 def build_snake_route(cells):
-    active_cells = [cell for cell in cells if cell["count"] > 0]
-    if not active_cells:
-        active_cells = cells
+    if not cells:
+        return [{"x": 0, "y": 0}]
 
-    active_cells.sort(key=lambda cell: (cell["x"], cell["y"]))
-    route = []
-    current = {"x": 0, "y": 0}
+    width = max(cell["x"] for cell in cells) + 1
+    height = GRID_HEIGHT
+    grid = snake_solver.Grid(width, height)
+    for cell in cells:
+        level = cell["level"]
+        if level > 0:
+            snake_solver.set_color(grid, cell["x"], cell["y"], level)
 
-    for cell in active_cells:
-        route.extend(path_between(current, cell))
-        current = {"x": cell["x"], "y": cell["y"]}
+    start_y = height // 2
+    snake0 = snake_solver.make_snake([(-1, start_y)] * SNAKE_LENGTH)
+    chain = snake_solver.get_best_route(grid, snake0)
 
-    return dedupe_route(route or [{"x": 0, "y": 0}])
-
-
-def path_between(start, end):
-    path = []
-    x = start["x"]
-    y = start["y"]
-
-    while x != end["x"]:
-        x += 1 if end["x"] > x else -1
-        path.append({"x": x, "y": y})
-
-    while y != end["y"]:
-        y += 1 if end["y"] > y else -1
-        path.append({"x": x, "y": y})
-
-    return path
-
-
-def dedupe_route(route):
-    deduped = []
-    for point in route:
-        if deduped and deduped[-1] == point:
-            continue
-        deduped.append(point)
-    return deduped
+    route = [
+        {"x": snake_solver.snake_head_x(s), "y": snake_solver.snake_head_y(s)}
+        for s in chain
+    ]
+    return route or [{"x": -1, "y": start_y}]
 
 
 def create_animated_snake(route, duration):

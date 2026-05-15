@@ -151,6 +151,8 @@ def write_svg(path, cells, palette):
     height = (GRID_HEIGHT + 5) * CELL_SIZE
     view_box = f"{-CELL_SIZE} {-CELL_SIZE * 2} {width} {height}"
     duration = max(len(route) * 100, 1000)
+    eat_times = get_eat_times(route)
+    empty_color = palette["empty"]
 
     parts = [
         f'<svg viewBox="{view_box}" width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">',
@@ -159,7 +161,7 @@ def write_svg(path, cells, palette):
         ":root{--cb:%s;--cs:%s;--ce:%s;%s}" % (
             palette["border"],
             palette["snake"],
-            palette["empty"],
+            empty_color,
             "".join(f"--c{index}:{color};" for index, color in enumerate(palette["dots"])),
         ),
         ".grid rect{fill:var(--c0);stroke:var(--cb);stroke-width:1px}",
@@ -167,38 +169,38 @@ def write_svg(path, cells, palette):
         '.grid rect[data-level="2"]{fill:var(--c2)}',
         '.grid rect[data-level="3"]{fill:var(--c3)}',
         '.grid rect[data-level="4"]{fill:var(--c4)}',
-        ".grid rect.eaten{animation:eat %sms steps(1,end) infinite}" % duration,
-        "@keyframes eat{0%{fill:inherit}0.001%,100%{fill:var(--c0)}}",
         ".snake{fill:var(--cs)}",
         ".snake-eye{fill:#fff}",
         "</style>",
         '<g class="grid">',
     ]
 
-    eat_times = get_eat_times(route)
-
     for cell in cells:
-        x = cell["x"] * CELL_SIZE
-        y = cell["y"] * CELL_SIZE
+        rect_x = cell["x"] * CELL_SIZE + (CELL_SIZE - DOT_SIZE) / 2
+        rect_y = cell["y"] * CELL_SIZE + (CELL_SIZE - DOT_SIZE) / 2
         eat_time = eat_times.get((cell["x"], cell["y"]))
-        class_name = "eaten" if eat_time is not None and cell["count"] > 0 else ""
-        style = f"animation-delay:{-eat_time}ms" if class_name else ""
-        parts.append(
-            '<rect class="%s" style="%s" x="%s" y="%s" width="%s" height="%s" rx="%s" ry="%s" data-date="%s" data-count="%s" data-level="%s" />'
+        rect_open = (
+            '<rect x="%s" y="%s" width="%s" height="%s" rx="%s" ry="%s" '
+            'data-date="%s" data-count="%s" data-level="%s"'
             % (
-                class_name,
-                style,
-                x + (CELL_SIZE - DOT_SIZE) / 2,
-                y + (CELL_SIZE - DOT_SIZE) / 2,
-                DOT_SIZE,
-                DOT_SIZE,
-                DOT_RADIUS,
-                DOT_RADIUS,
-                cell["date"].isoformat(),
-                cell["count"],
-                cell["level"],
+                rect_x, rect_y, DOT_SIZE, DOT_SIZE, DOT_RADIUS, DOT_RADIUS,
+                cell["date"].isoformat(), cell["count"], cell["level"],
             )
         )
+
+        if eat_time is not None and cell["count"] > 0:
+            level_color = palette["dots"][cell["level"]]
+            eat_fraction = max(min(eat_time / duration, 0.9999), 0.0001)
+            parts.append(
+                '%s>'
+                '<animate attributeName="fill" calcMode="discrete" '
+                'values="%s;%s;%s" keyTimes="0;%.6f;1" '
+                'dur="%sms" repeatCount="indefinite" />'
+                '</rect>'
+                % (rect_open, level_color, empty_color, empty_color, eat_fraction, duration)
+            )
+        else:
+            parts.append('%s />' % rect_open)
 
     parts.extend(["</g>", create_animated_snake(route, duration), "</svg>"])
 

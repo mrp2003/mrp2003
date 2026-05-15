@@ -1,6 +1,7 @@
 import datetime
 import requests
 import os
+import time
 from xml.dom import minidom
 
 
@@ -42,67 +43,169 @@ def get_days_in_month(year, month):
     return (next_month - current_month).days
 
 
+def format_number(value):
+    """
+    Format a number with thousands separators for SVG display.
+    """
+    return f'{value:,}'
+
+
 def fetch_github_data():
     """
-    Fetch data for repositories, contributions, commits, stars, followers, and LOC from GitHub API.
+    Fetch live repo and code-change totals across accessible owned and contributed repositories.
     """
-    # GraphQL query templates
-    repo_query = '''
-    query($login: String!) {
-        user(login: $login) {
-            repositories {
-                totalCount
-            }
+    token = os.environ['ACCESS_TOKEN']
+    headers = get_github_headers(token)
+    user_name, user_id = fetch_viewer(headers)
+
+    return fetch_repository_stats(user_name, user_id, headers)
+
+
+def get_github_headers(token):
+    """
+    Return headers used for GitHub REST and GraphQL requests.
+    """
+    return {
+        'Authorization': f'Bearer {token}',
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+    }
+
+
+def fetch_viewer(headers):
+    """
+    Fetch the authenticated GitHub user's login and node ID.
+    """
+    query = '''
+    query {
+        viewer {
+            login
+            id
         }
     }'''
+    viewer = run_graphql_query(query, {}, headers)['data']['viewer']
+    return viewer['login'], viewer['id']
 
-    star_query = '''
-    query($login: String!) {
-        user(login: $login) {
-            repositories {
-                edges {
-                    node {
-                        stargazers {
-                            totalCount
-                        }
-                    }
-                }
-            }
-        }
-    }'''
 
-    commit_query = '''
-    query($login: String!) {
-        user(login: $login) {
-            contributionsCollection {
-                totalCommitContributions
-            }
-        }
-    }'''
+def fetch_repository_stats(user_name, user_id, headers):
+    """
+    Fetch repo, commit, and LOC stats across all accessible repos and branches.
+    """
+    accessible_repos = fetch_accessible_repositories(headers)
+    owned_repos = {repo['full_name'] for repo in accessible_repos if repo['owner']['login'] == user_name}
+    contributed_repos = set()
+    seen_commit_shas = set()
+    commit_count = 0
+    loc_added = 0
+    loc_removed = 0
 
-    follower_query = '''
-    query($login: String!) {
-        user(login: $login) {
-            followers {
-                totalCount
-            }
-        }
-    }'''
+    for repo in accessible_repos:
+        repo_commit_count, repo_added, repo_removed = fetch_repository_code_changes(
+            repo,
+            user_id,
+            headers,
+            seen_commit_shas,
+        )
 
-    loc_query = '''
-    query($login: String!) {
-        user(login: $login) {
-            repositories(first: 100) {
-                edges {
-                    node {
-                        name
-                        defaultBranchRef {
-                            target {
-                                ... on Commit {
-                                    history {
-                                        totalCount
-                                    }
-                                }
+        if repo_commit_count and repo['owner']['login'] != user_name:
+            contributed_repos.add(repo['full_name'])
+
+        commit_count += repo_commit_count
+        loc_added += repo_added
+        loc_removed += repo_removed
+
+    repo_count = len(owned_repos | contributed_repos)
+    loc_total = max(loc_added - loc_removed, 0)
+
+    return repo_count, len(contributed_repos), commit_count, loc_total, loc_added, loc_removed
+
+
+def fetch_accessible_repositories(headers):
+    """
+    Fetch all repositories accessible to the authenticated user.
+    """
+    repos = []
+    seen_repos = set()
+    page = 1
+
+    while True:
+        page_repos = run_rest_query(
+            'https://api.github.com/user/repos',
+            headers,
+            {
+                'visibility': 'all',
+                'affiliation': 'owner,collaborator,organization_member',
+                'per_page': 100,
+                'page': page,
+            },
+        )
+
+        if not page_repos:
+            return repos
+
+        for repo in page_repos:
+            if repo['full_name'] in seen_repos:
+                continue
+
+            repos.append(repo)
+            seen_repos.add(repo['full_name'])
+
+        page += 1
+
+
+def fetch_repository_code_changes(repo, user_id, headers, seen_commit_shas):
+    """
+    Fetch authored commits and code changes from a repository's default branch.
+    """
+    repo_commit_count = 0
+    repo_added = 0
+    repo_removed = 0
+    branch = repo.get('default_branch')
+
+    if not branch:
+        return repo_commit_count, repo_added, repo_removed
+
+    branch_commits = fetch_default_branch_author_commits(
+        repo['owner']['login'],
+        repo['name'],
+        branch,
+        user_id,
+        headers,
+    )
+
+    for commit in branch_commits:
+        commit_sha = commit['oid']
+        repo_commit_count += 1
+
+        if commit_sha in seen_commit_shas:
+            continue
+
+        seen_commit_shas.add(commit_sha)
+        repo_added += commit['additions']
+        repo_removed += commit['deletions']
+
+    return repo_commit_count, repo_added, repo_removed
+
+
+def fetch_default_branch_author_commits(owner, repo_name, branch, user_id, headers):
+    """
+    Fetch authored commit stats from a repository's default branch.
+    """
+    query = '''
+    query($owner: String!, $name: String!, $branch: String!, $authorId: ID!, $after: String) {
+        repository(owner: $owner, name: $name) {
+            ref(qualifiedName: $branch) {
+                target {
+                    ... on Commit {
+                        history(first: 50, after: $after, author: {id: $authorId}) {
+                            nodes {
+                                oid
+                                additions
+                                deletions
+                            }
+                            pageInfo {
+                                hasNextPage
+                                endCursor
                             }
                         }
                     }
@@ -110,39 +213,84 @@ def fetch_github_data():
             }
         }
     }'''
+    commits = []
+    cursor = None
 
-    headers = {'authorization': 'token ' + os.environ['ACCESS_TOKEN']}
-    user_name = os.environ['USER_NAME']
+    while True:
+        variables = {
+            'owner': owner,
+            'name': repo_name,
+            'branch': branch,
+            'authorId': user_id,
+            'after': cursor,
+        }
+        data = run_graphql_query(query, variables, headers)['data']['repository']
+        ref = data['ref']
 
-    # Send GraphQL requests
-    def run_query(query, variables):
-        response = requests.post('https://api.github.com/graphql', json={'query': query, 'variables': variables}, headers=headers)
-        if response.status_code != 200:
-            raise Exception(f"GitHub API request failed: {response.status_code} {response.text}")
-        return response.json()
+        if not ref or not ref['target']:
+            return commits
 
-    # Fetch data
-    repo_data = run_query(repo_query, {'login': user_name})['data']['user']['repositories']['totalCount']
-    star_data = sum(edge['node']['stargazers']['totalCount'] for edge in
-                    run_query(star_query, {'login': user_name})['data']['user']['repositories']['edges'])
-    commit_data = run_query(commit_query, {'login': user_name})['data']['user']['contributionsCollection']['totalCommitContributions']
-    follower_data = run_query(follower_query, {'login': user_name})['data']['user']['followers']['totalCount']
+        history = ref['target'].get('history')
 
-    # LOC data
-    loc_data = run_query(loc_query, {'login': user_name})['data']['user']['repositories']['edges']
-    loc_added, loc_removed, loc_total = 0, 0, 0
+        if not history:
+            return commits
 
-    for repo in loc_data:
-        try:
-            history = repo['node']['defaultBranchRef']['target']['history']
-            loc_total += history['totalCount']
-        except (TypeError, KeyError):
-            continue
+        commits.extend(history['nodes'])
 
-    return repo_data, commit_data, star_data, follower_data, loc_total, loc_added, loc_removed
+        if not history['pageInfo']['hasNextPage']:
+            return commits
+
+        cursor = history['pageInfo']['endCursor']
 
 
-def update_svg(filename, age, repo_count, contrib_count, commit_count, star_count, follower_count, loc_total, loc_added, loc_removed):
+def run_rest_query(url, headers, params=None, allow_statuses=None):
+    """
+    Run a GitHub REST request and return the response JSON.
+    """
+    allow_statuses = allow_statuses or set()
+
+    for attempt in range(5):
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+
+        if response.status_code < 500:
+            break
+
+        time.sleep(2 * (attempt + 1))
+
+    if response.status_code in allow_statuses:
+        return []
+
+    response.raise_for_status()
+    return response.json()
+
+
+def run_graphql_query(query, variables, headers):
+    """
+    Run a GitHub GraphQL query and return the response JSON.
+    """
+    for attempt in range(5):
+        response = requests.post(
+            'https://api.github.com/graphql',
+            json={'query': query, 'variables': variables},
+            headers=headers,
+            timeout=30,
+        )
+
+        if response.status_code < 500:
+            break
+
+        time.sleep(2 * (attempt + 1))
+
+    response.raise_for_status()
+    payload = response.json()
+
+    if payload.get('errors'):
+        raise RuntimeError(f"GitHub GraphQL request failed: {payload['errors']}")
+
+    return payload
+
+
+def update_svg(filename, age, repo_count, contribution_count, commit_count, loc_total, loc_added, loc_removed):
     """
     Update the SVG file with the provided values.
     """
@@ -179,12 +327,12 @@ def update_svg(filename, age, repo_count, contrib_count, commit_count, star_coun
         raise ValueError(f"Could not find SVG class: {class_name}")
 
     set_next_value('Uptime', age)
-    set_next_value('Repos', repo_count)
-    set_next_value('Contributed', contrib_count)
-    set_next_value('Commmits', commit_count)
-    set_next_value('Lines of Code', loc_total)
-    set_first_class_value('addColor', f"{loc_added}++")
-    set_first_class_value('delColor', f"{loc_removed}--")
+    set_next_value('Repos', format_number(repo_count))
+    set_next_value('Contributed', format_number(contribution_count))
+    set_next_value('Commits', format_number(commit_count))
+    set_next_value('Lines of Code', format_number(loc_total))
+    set_first_class_value('addColor', f"{format_number(loc_added)}++")
+    set_first_class_value('delColor', f"{format_number(loc_removed)}--")
 
     with open(filename, 'w', encoding='utf-8') as file:
         file.write(svg.toxml())
@@ -196,8 +344,8 @@ if __name__ == '__main__':
 
     # Fetch data
     age = get_age(birthday)
-    repo_count, commit_count, star_count, follower_count, loc_total, loc_added, loc_removed = fetch_github_data()
+    repo_count, contribution_count, commit_count, loc_total, loc_added, loc_removed = fetch_github_data()
 
     # Update SVG files
-    update_svg('dark.svg', age, repo_count, repo_count, commit_count, star_count, follower_count, loc_total, loc_added, loc_removed)
-    update_svg('light.svg', age, repo_count, repo_count, commit_count, star_count, follower_count, loc_total, loc_added, loc_removed)
+    update_svg('dark.svg', age, repo_count, contribution_count, commit_count, loc_total, loc_added, loc_removed)
+    update_svg('light.svg', age, repo_count, contribution_count, commit_count, loc_total, loc_added, loc_removed)

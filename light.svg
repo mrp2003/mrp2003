@@ -53,12 +53,13 @@ text, tspan {white-space: pre;}
 <tspan x="400" y="70">——————</tspan>
 
 <tspan x="400" y="110" class="keyColor">Uptime</tspan>: <tspan class="valueColor">22 years, 11 months, 2 days</tspan>
-<tspan x="400" y="130" class="keyColor">Host</tspan>: <tspan class="valueColor">Heriot Watt University, Dubai</tspan><tspan class="commentColor"> #HWUD</tspan>
+<tspan x="400" y="130" class="keyColor">Host</tspan>: <tspan class="valueColor">Sentiment AI</tspan><tspan class="commentColor"> #SAI</tspan>
 
 <tspan x="400" y="180" class="keyColor">GitHub Stats</tspan>:
 <tspan x="400" y="200">——————</tspan>
-<tspan x="400" y="220" class="subValueColor">Repos</tspan>: <tspan class="subTaskColor">19</tspan> {<tspan class="subValueColor">Contributed</tspan>: <tspan class="subTaskColor">133</tspan>}  | <tspan class="subValueColor">Commmits</tspan>: <tspan class="subTaskColor">2,110  </tspan>
-<tspan x="400" y="240" class="subValueColor">Lines of Code</tspan>: <tspan class="subTaskColor">446,180</tspan> (<tspan class="addColor">522,944++</tspan>, <tspan class="delColor">76,764--</tspan>)
+<tspan x="400" y="220" class="subValueColor">Repos</tspan>: <tspan class="subTaskColor">57</tspan> {<tspan class="subValueColor">Contributed</tspan>: <tspan class="subTaskColor">18</tspan>}
+<tspan x="400" y="240" class="subValueColor">Commits</tspan>: <tspan class="subTaskColor">2,007</tspan>
+<tspan x="400" y="260" class="subValueColor">Lines of Code</tspan>: <tspan class="subTaskColor">4,007,732</tspan> (<tspan class="addColor">13,292,800++</tspan>, <tspan class="delColor">9,285,068--</tspan>)
 </text>
 
 </svg>

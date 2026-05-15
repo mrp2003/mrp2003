@@ -1,14 +1,14 @@
 <img src="banner.jpg" alt="GitHub Banner" width="100%" />
 
-<a href="https://github.com/mroshan5722">
+<a href="https://github.com/mrp2003">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mroshan5722/mroshan5722/main/dark.svg">
-    <img alt=Muhammed Roshan's GitHub Profile README" src="https://raw.githubusercontent.com/mroshan5722/mroshan5722/main/light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mrp2003/mrp2003/main/dark.svg">
+    <img alt="Muhammed Roshan's GitHub Profile README" src="https://raw.githubusercontent.com/mrp2003/mrp2003/main/light.svg">
   </picture>
 </a>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mroshan5722/mroshan5722/output/github-snake-dark.svg" />
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/mroshan5722/mroshan5722/output/github-snake.svg" />
-  <img alt="github-snake" src="https://raw.githubusercontent.com/mroshan5722/mrosahan5722/output/github-snake.svg" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mrp2003/mrp2003/output/github-snake-dark.svg" />
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/mrp2003/mrp2003/output/github-snake.svg" />
+  <img alt="github-snake" src="https://raw.githubusercontent.com/mrp2003/mrp2003/output/github-snake.svg" />
 </picture>

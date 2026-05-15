@@ -31,13 +31,20 @@ def main():
     token = os.environ["ACCESS_TOKEN"]
     headers = get_github_headers(token)
 
-    login, total, weeks = fetch_contribution_calendar(headers)
-    cells = build_cells_from_weeks(weeks)
+    summary = fetch_contribution_calendar(headers)
+    cells = build_cells_from_weeks(summary["weeks"])
 
     os.makedirs("dist", exist_ok=True)
     write_svg("dist/github-snake.svg", cells, LIGHT_PALETTE)
     write_svg("dist/github-snake-dark.svg", cells, DARK_PALETTE)
-    print(f"Generated snake for {login} from {total} contributions (public + private)")
+    print(f"Login:                       {summary['login']}")
+    print(f"Calendar total (visible):    {summary['total']}")
+    print(f"  commits:                   {summary['commits']}")
+    print(f"  issues:                    {summary['issues']}")
+    print(f"  pull requests:             {summary['prs']}")
+    print(f"  reviews:                   {summary['reviews']}")
+    print(f"Restricted (PAT can't see):  {summary['restricted']}")
+    print(f"Window:                      {summary['from']} → {summary['to']}")
 
 
 def get_github_headers(token):
@@ -54,6 +61,13 @@ def fetch_contribution_calendar(headers):
         viewer {
             login
             contributionsCollection {
+                startedAt
+                endedAt
+                totalCommitContributions
+                totalIssueContributions
+                totalPullRequestContributions
+                totalPullRequestReviewContributions
+                restrictedContributionsCount
                 contributionCalendar {
                     totalContributions
                     weeks {
@@ -68,8 +82,20 @@ def fetch_contribution_calendar(headers):
         }
     }"""
     viewer = run_graphql_query(query, {}, headers)["data"]["viewer"]
-    calendar = viewer["contributionsCollection"]["contributionCalendar"]
-    return viewer["login"], calendar["totalContributions"], calendar["weeks"]
+    collection = viewer["contributionsCollection"]
+    calendar = collection["contributionCalendar"]
+    return {
+        "login": viewer["login"],
+        "total": calendar["totalContributions"],
+        "commits": collection["totalCommitContributions"],
+        "issues": collection["totalIssueContributions"],
+        "prs": collection["totalPullRequestContributions"],
+        "reviews": collection["totalPullRequestReviewContributions"],
+        "restricted": collection["restrictedContributionsCount"],
+        "from": collection["startedAt"],
+        "to": collection["endedAt"],
+        "weeks": calendar["weeks"],
+    }
 
 
 def run_graphql_query(query, variables, headers):

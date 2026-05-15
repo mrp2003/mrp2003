@@ -1,20 +1,16 @@
 import datetime
 import os
 import time
-from collections import defaultdict
 
 import requests
 
 
-GITHUB_API_URL = "https://api.github.com"
 GITHUB_GRAPHQL_URL = "https://api.github.com/graphql"
-GRID_DAYS = 371
 GRID_HEIGHT = 7
 CELL_SIZE = 16
 DOT_SIZE = 12
 DOT_RADIUS = 2
 SNAKE_LENGTH = 5
-MAX_BRANCHES_PER_REPO = 5
 
 LIGHT_PALETTE = {
     "empty": "#ebedf0",
@@ -34,18 +30,14 @@ DARK_PALETTE = {
 def main():
     token = os.environ["ACCESS_TOKEN"]
     headers = get_github_headers(token)
-    login, user_id = fetch_viewer(headers)
-    today = datetime.date.today()
-    start_date = today - datetime.timedelta(days=GRID_DAYS - 1)
 
-    print(f"Fetching contributions for {login} from {start_date} to {today}")
-    daily_counts = fetch_daily_contributions(user_id, start_date, today, headers)
-    cells = build_cells(start_date, today, daily_counts)
+    login, total, weeks = fetch_contribution_calendar(headers)
+    cells = build_cells_from_weeks(weeks)
 
     os.makedirs("dist", exist_ok=True)
     write_svg("dist/github-snake.svg", cells, LIGHT_PALETTE)
     write_svg("dist/github-snake-dark.svg", cells, DARK_PALETTE)
-    print(f"Generated snake from {sum(daily_counts.values())} commits across accessible repositories")
+    print(f"Generated snake for {login} from {total} contributions (public + private)")
 
 
 def get_github_headers(token):
@@ -56,163 +48,28 @@ def get_github_headers(token):
     }
 
 
-def fetch_viewer(headers):
+def fetch_contribution_calendar(headers):
     query = """
     query {
         viewer {
             login
-            id
-        }
-    }"""
-    viewer = run_graphql_query(query, {}, headers)["data"]["viewer"]
-    return viewer["login"], viewer["id"]
-
-
-def fetch_daily_contributions(user_id, start_date, end_date, headers):
-    repos = fetch_accessible_repositories(headers)
-    counts = defaultdict(int)
-    seen_commit_shas = set()
-
-    for repo in repos:
-        branches = fetch_repository_branches(repo, headers)
-        for branch in branches:
-            commits = fetch_repository_commits(repo, branch, user_id, start_date, end_date, headers)
-            for commit in commits:
-                if commit["oid"] in seen_commit_shas:
-                    continue
-
-                committed_date = parse_github_date(commit["committedDate"]).date()
-                if start_date <= committed_date <= end_date:
-                    counts[committed_date] += 1
-                    seen_commit_shas.add(commit["oid"])
-
-    return counts
-
-
-def fetch_accessible_repositories(headers):
-    repos = []
-    seen_repos = set()
-    page = 1
-
-    while True:
-        page_repos = run_rest_query(
-            f"{GITHUB_API_URL}/user/repos",
-            headers,
-            {
-                "visibility": "all",
-                "affiliation": "owner,collaborator,organization_member",
-                "per_page": 100,
-                "page": page,
-            },
-        )
-
-        if not page_repos:
-            return repos
-
-        for repo in page_repos:
-            if repo["full_name"] in seen_repos:
-                continue
-
-            repos.append(repo)
-            seen_repos.add(repo["full_name"])
-
-        page += 1
-
-
-def fetch_repository_branches(repo, headers):
-    branches = []
-    default_branch = repo.get("default_branch")
-    if default_branch:
-        branches.append(default_branch)
-
-    page_branches = run_rest_query(
-        f"{GITHUB_API_URL}/repos/{repo['owner']['login']}/{repo['name']}/branches",
-        headers,
-        {"per_page": MAX_BRANCHES_PER_REPO, "page": 1},
-        allow_statuses={404, 409},
-    )
-
-    for branch in page_branches:
-        branch_name = branch["name"]
-        if branch_name in branches:
-            continue
-
-        branches.append(branch_name)
-
-    return branches[:MAX_BRANCHES_PER_REPO]
-
-
-def fetch_repository_commits(repo, branch, user_id, start_date, end_date, headers):
-    query = """
-    query($owner: String!, $name: String!, $branch: String!, $authorId: ID!, $since: GitTimestamp!, $until: GitTimestamp!, $after: String) {
-        repository(owner: $owner, name: $name) {
-            ref(qualifiedName: $branch) {
-                target {
-                    ... on Commit {
-                        history(first: 50, after: $after, author: {id: $authorId}, since: $since, until: $until) {
-                            nodes {
-                                oid
-                                committedDate
-                            }
-                            pageInfo {
-                                hasNextPage
-                                endCursor
-                            }
+            contributionsCollection {
+                contributionCalendar {
+                    totalContributions
+                    weeks {
+                        contributionDays {
+                            date
+                            contributionCount
+                            weekday
                         }
                     }
                 }
             }
         }
     }"""
-    commits = []
-    cursor = None
-    since = datetime.datetime.combine(start_date, datetime.time.min, tzinfo=datetime.timezone.utc).isoformat()
-    until = datetime.datetime.combine(end_date, datetime.time.max, tzinfo=datetime.timezone.utc).isoformat()
-
-    while True:
-        variables = {
-            "owner": repo["owner"]["login"],
-            "name": repo["name"],
-            "branch": branch,
-            "authorId": user_id,
-            "since": since,
-            "until": until,
-            "after": cursor,
-        }
-        repository = run_graphql_query(query, variables, headers)["data"]["repository"]
-        ref = repository["ref"] if repository else None
-
-        if not ref or not ref["target"]:
-            return commits
-
-        history = ref["target"].get("history")
-        if not history:
-            return commits
-
-        commits.extend(history["nodes"])
-        if not history["pageInfo"]["hasNextPage"]:
-            return commits
-
-        cursor = history["pageInfo"]["endCursor"]
-
-
-def parse_github_date(value):
-    return datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
-
-
-def run_rest_query(url, headers, params=None, allow_statuses=None):
-    allow_statuses = allow_statuses or set()
-    for attempt in range(5):
-        response = requests.get(url, headers=headers, params=params, timeout=30)
-        if response.status_code < 500:
-            break
-        time.sleep(2 * (attempt + 1))
-
-    if response.status_code in allow_statuses:
-        return []
-
-    response.raise_for_status()
-    return response.json()
+    viewer = run_graphql_query(query, {}, headers)["data"]["viewer"]
+    calendar = viewer["contributionsCollection"]["contributionCalendar"]
+    return viewer["login"], calendar["totalContributions"], calendar["weeks"]
 
 
 def run_graphql_query(query, variables, headers):
@@ -235,24 +92,18 @@ def run_graphql_query(query, variables, headers):
     return payload
 
 
-def build_cells(start_date, end_date, daily_counts):
-    first_sunday = start_date - datetime.timedelta(days=(start_date.weekday() + 1) % 7)
+def build_cells_from_weeks(weeks):
     cells = []
-    current_date = first_sunday
-
-    while current_date <= end_date:
-        week = (current_date - first_sunday).days // 7
-        weekday = (current_date.weekday() + 1) % 7
-        count = daily_counts.get(current_date, 0)
-        cells.append({
-            "date": current_date,
-            "x": week,
-            "y": weekday,
-            "count": count,
-            "level": contribution_level(count),
-        })
-        current_date += datetime.timedelta(days=1)
-
+    for week_index, week in enumerate(weeks):
+        for day in week["contributionDays"]:
+            count = day["contributionCount"]
+            cells.append({
+                "date": datetime.date.fromisoformat(day["date"]),
+                "x": week_index,
+                "y": day["weekday"],
+                "count": count,
+                "level": contribution_level(count),
+            })
     return cells
 
 

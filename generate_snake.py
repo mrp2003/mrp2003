@@ -17,15 +17,15 @@ SNAKE_LENGTH = 5
 LIGHT_PALETTE = {
     "empty": "#ebedf0",
     "border": "#1b1f230a",
-    "dots": ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
-    "snake": "purple",
+    "dots": ["#ebedf0", "#c8d4e2", "#8fa4be", "#5b7aa0", "#2e4970"],
+    "snake": "#1e293b",
 }
 
 DARK_PALETTE = {
     "empty": "#161b22",
     "border": "#1b1f230a",
-    "dots": ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"],
-    "snake": "purple",
+    "dots": ["#161b22", "#1f2937", "#374a63", "#5e7ba3", "#9ab4d4"],
+    "snake": "#f1f5f9",
 }
 
 

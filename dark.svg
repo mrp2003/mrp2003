@@ -1,4 +1,4 @@
-<?xml version="1.0" ?><svg xmlns="http://www.w3.org/2000/svg" font-family="Andale Mono,AndaleMono,Consolas,monospace" width="1000px" height="400px" font-size="16px">
+<?xml version="1.0" ?><svg xmlns="http://www.w3.org/2000/svg" font-family="Andale Mono,AndaleMono,Consolas,monospace" width="1000px" height="390px" font-size="16px">
 <style>
 .keyColor {fill: #e77a98;}
 .valueColor {fill: #c7b0d7;}
@@ -10,7 +10,7 @@
 text, tspan {white-space: pre;}
 </style>
 
-<rect width="1000px" height="400px" fill="#161b22" rx="15"/>
+<rect width="1000px" height="390px" fill="#161b22" rx="15"/>
 
 <text x="50" y="95" fill="#f0f2f5" class="ascii" font-size="12px">
 <tspan x="50" y="95">                       tõ¾úff¾5f¾ú¾õú                       </tspan>

@@ -117,7 +117,7 @@ def fetch_repository_stats(user_name, user_id, headers):
     repo_count = len(owned_repos | contributed_repos)
     loc_total = max(loc_added - loc_removed, 0)
 
-    return repo_count, len(contributed_repos), commit_count, loc_total, loc_added, loc_removed
+    return len(owned_repos), len(contributed_repos), commit_count, loc_total, loc_added, loc_removed
 
 
 def fetch_accessible_repositories(headers):
@@ -327,12 +327,12 @@ def update_svg(filename, age, repo_count, contribution_count, commit_count, loc_
         raise ValueError(f"Could not find SVG class: {class_name}")
 
     set_next_value('Uptime', age)
-    set_next_value('Repos', format_number(repo_count))
-    set_next_value('Contributed', format_number(contribution_count))
+    set_next_value('Repos Owned', format_number(repo_count))
+    set_next_value('Repos Contributed', format_number(contribution_count))
     set_next_value('Commits', format_number(commit_count))
+    set_next_value('Lines Added', f"{format_number(loc_added)}++")
+    set_next_value('Lines Removed', f"{format_number(loc_removed)}--")
     set_next_value('Lines of Code', format_number(loc_total))
-    set_first_class_value('addColor', f"{format_number(loc_added)}++")
-    set_first_class_value('delColor', f"{format_number(loc_removed)}--")
 
     with open(filename, 'w', encoding='utf-8') as file:
         file.write(svg.toxml())

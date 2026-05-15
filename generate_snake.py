@@ -24,7 +24,7 @@ LIGHT_PALETTE = {
 DARK_PALETTE = {
     "empty": "#161b22",
     "border": "#1b1f230a",
-    "dots": ["#161b22", "#1f2937", "#374a63", "#5e7ba3", "#9ab4d4"],
+    "dots": ["#161b22", "#2a3548", "#3f5471", "#6586ad", "#9ab4d4"],
     "snake": "#f1f5f9",
 }
 

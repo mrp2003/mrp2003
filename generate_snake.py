@@ -14,6 +14,7 @@ CELL_SIZE = 16
 DOT_SIZE = 12
 DOT_RADIUS = 2
 SNAKE_LENGTH = 5
+MAX_BRANCHES_PER_REPO = 5
 
 LIGHT_PALETTE = {
     "empty": "#ebedf0",
@@ -73,19 +74,17 @@ def fetch_daily_contributions(user_id, start_date, end_date, headers):
     seen_commit_shas = set()
 
     for repo in repos:
-        branch = repo.get("default_branch")
-        if not branch:
-            continue
+        branches = fetch_repository_branches(repo, headers)
+        for branch in branches:
+            commits = fetch_repository_commits(repo, branch, user_id, start_date, end_date, headers)
+            for commit in commits:
+                if commit["oid"] in seen_commit_shas:
+                    continue
 
-        commits = fetch_repository_commits(repo, branch, user_id, start_date, end_date, headers)
-        for commit in commits:
-            if commit["oid"] in seen_commit_shas:
-                continue
-
-            committed_date = parse_github_date(commit["committedDate"]).date()
-            if start_date <= committed_date <= end_date:
-                counts[committed_date] += 1
-                seen_commit_shas.add(commit["oid"])
+                committed_date = parse_github_date(commit["committedDate"]).date()
+                if start_date <= committed_date <= end_date:
+                    counts[committed_date] += 1
+                    seen_commit_shas.add(commit["oid"])
 
     return counts
 
@@ -118,6 +117,29 @@ def fetch_accessible_repositories(headers):
             seen_repos.add(repo["full_name"])
 
         page += 1
+
+
+def fetch_repository_branches(repo, headers):
+    branches = []
+    default_branch = repo.get("default_branch")
+    if default_branch:
+        branches.append(default_branch)
+
+    page_branches = run_rest_query(
+        f"{GITHUB_API_URL}/repos/{repo['owner']['login']}/{repo['name']}/branches",
+        headers,
+        {"per_page": MAX_BRANCHES_PER_REPO, "page": 1},
+        allow_statuses={404, 409},
+    )
+
+    for branch in page_branches:
+        branch_name = branch["name"]
+        if branch_name in branches:
+            continue
+
+        branches.append(branch_name)
+
+    return branches[:MAX_BRANCHES_PER_REPO]
 
 
 def fetch_repository_commits(repo, branch, user_id, start_date, end_date, headers):
@@ -178,12 +200,16 @@ def parse_github_date(value):
     return datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def run_rest_query(url, headers, params=None):
+def run_rest_query(url, headers, params=None, allow_statuses=None):
+    allow_statuses = allow_statuses or set()
     for attempt in range(5):
         response = requests.get(url, headers=headers, params=params, timeout=30)
         if response.status_code < 500:
             break
         time.sleep(2 * (attempt + 1))
+
+    if response.status_code in allow_statuses:
+        return []
 
     response.raise_for_status()
     return response.json()
@@ -264,18 +290,27 @@ def write_svg(path, cells, palette):
         '.grid rect[data-level="2"]{fill:var(--c2)}',
         '.grid rect[data-level="3"]{fill:var(--c3)}',
         '.grid rect[data-level="4"]{fill:var(--c4)}',
+        ".grid rect.eaten{animation:eat %sms steps(1,end) infinite}" % duration,
+        "@keyframes eat{0%{fill:inherit}0.001%,100%{fill:var(--c0)}}",
         ".snake{fill:var(--cs)}",
         ".snake-eye{fill:#fff}",
         "</style>",
         '<g class="grid">',
     ]
 
+    eat_times = get_eat_times(route)
+
     for cell in cells:
         x = cell["x"] * CELL_SIZE
         y = cell["y"] * CELL_SIZE
+        eat_time = eat_times.get((cell["x"], cell["y"]))
+        class_name = "eaten" if eat_time is not None and cell["count"] > 0 else ""
+        style = f"animation-delay:{-eat_time}ms" if class_name else ""
         parts.append(
-            '<rect x="%s" y="%s" width="%s" height="%s" rx="%s" ry="%s" data-date="%s" data-count="%s" data-level="%s" />'
+            '<rect class="%s" style="%s" x="%s" y="%s" width="%s" height="%s" rx="%s" ry="%s" data-date="%s" data-count="%s" data-level="%s" />'
             % (
+                class_name,
+                style,
                 x + (CELL_SIZE - DOT_SIZE) / 2,
                 y + (CELL_SIZE - DOT_SIZE) / 2,
                 DOT_SIZE,
@@ -292,6 +327,15 @@ def write_svg(path, cells, palette):
 
     with open(path, "w", encoding="utf-8") as file:
         file.write("".join(parts))
+
+
+def get_eat_times(route):
+    eat_times = {}
+    for index, point in enumerate(route):
+        key = (point["x"], point["y"])
+        if key not in eat_times:
+            eat_times[key] = index * 100
+    return eat_times
 
 
 def build_snake_route(cells):

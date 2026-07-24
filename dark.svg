@@ -37,17 +37,17 @@ text, tspan {white-space: pre;}
 <tspan x="500" y="75">Muhammed Roshan Palayamkot</tspan>
 <tspan x="500" y="95">——————</tspan>
 
-<tspan x="500" y="135" class="keyColor">Uptime</tspan>: <tspan class="valueColor">23 years, 1 months, 10 days</tspan>
+<tspan x="500" y="135" class="keyColor">Uptime</tspan>: <tspan class="valueColor">23 years, 1 months, 11 days</tspan>
 <tspan x="500" y="155" class="keyColor">Host</tspan>: <tspan class="valueColor">Sentiment AI</tspan><tspan class="commentColor"> #SAI</tspan>
 
 <tspan x="500" y="205" class="keyColor">GitHub Stats</tspan>:
 <tspan x="500" y="225">——————</tspan>
 <tspan x="500" y="245" class="subValueColor">Repos Owned</tspan>: <tspan class="subTaskColor">43</tspan>
 <tspan x="500" y="265" class="subValueColor">Repos Contributed</tspan>: <tspan class="subTaskColor">28</tspan>
-<tspan x="500" y="285" class="subValueColor">Commits</tspan>: <tspan class="subTaskColor">3,097</tspan>
-<tspan x="500" y="305" class="subValueColor">Lines Added</tspan>: <tspan class="addColor">13,637,489++</tspan>
-<tspan x="500" y="325" class="subValueColor">Lines Removed</tspan>: <tspan class="delColor">9,822,084--</tspan>
-<tspan x="500" y="345" class="subValueColor">Lines of Code</tspan>: <tspan class="subTaskColor">3,815,405</tspan>
+<tspan x="500" y="285" class="subValueColor">Commits</tspan>: <tspan class="subTaskColor">3,118</tspan>
+<tspan x="500" y="305" class="subValueColor">Lines Added</tspan>: <tspan class="addColor">13,643,944++</tspan>
+<tspan x="500" y="325" class="subValueColor">Lines Removed</tspan>: <tspan class="delColor">9,822,346--</tspan>
+<tspan x="500" y="345" class="subValueColor">Lines of Code</tspan>: <tspan class="subTaskColor">3,821,598</tspan>
 </text>
 
 </svg>

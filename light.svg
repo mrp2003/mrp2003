@@ -12,24 +12,30 @@ text, tspan {white-space: pre;}
 
 <rect width="1000px" height="390px" fill="#f6f8fa" rx="15"/>
 
-<text x="50" y="95" fill="#191b1f" class="ascii" font-size="12px">
-<tspan x="50" y="95">                       tõ¾úff¾5f¾ú¾õú                       </tspan>
-<tspan x="50" y="109">                    lõ¾ú            ¯õf¾                    </tspan>
-<tspan x="50" y="123">                  «õõ                  ¢fõ                  </tspan>
-<tspan x="50" y="137">                 õfª                     a¾½                </tspan>
-<tspan x="50" y="151">                úf                        ¡õ™               </tspan>
-<tspan x="50" y="165">               õf                          &gt;f?              </tspan>
-<tspan x="50" y="179">               f½                           õ¾              </tspan>
-<tspan x="50" y="193">              3x                            ¢x              </tspan>
-<tspan x="50" y="207">              wõ                            ¿¾­             </tspan>
-<tspan x="50" y="221">                                            s¾              </tspan>
-<tspan x="50" y="235">                                            f¾              </tspan>
-<tspan x="50" y="249">               õ¾¾                         †f?              </tspan>
-<tspan x="50" y="263">                                          ¯õ™               </tspan>
-<tspan x="50" y="277">                                         ™¾½                </tspan>
-<tspan x="50" y="291">                  «fú                  ƒfõ                  </tspan>
-<tspan x="50" y="305">                    ï¾¾a            ”õµf                    </tspan>
-<tspan x="50" y="319">                       tõõ5ff¾ffxõfõa                      </tspan>
+<text x="130" y="95" fill="#E34234" class="ascii" font-size="9px">
+<tspan x="130" y="95">    :########################################-    </tspan>
+<tspan x="130" y="105">    +@@++++++++++++++++++++++++++++++++++++@@+    </tspan>
+<tspan x="130" y="115">    +@@                                    @@+    </tspan>
+<tspan x="130" y="125">    +@@   %@@@@@@@@@@@@.                   @@+    </tspan>
+<tspan x="130" y="135">    +@@             -@@.                   @@+    </tspan>
+<tspan x="130" y="145">    +@@   .:.   ::  -@@.                   @@+    </tspan>
+<tspan x="130" y="155">    +@@   %@=  #@%  -@@.                   @@+    </tspan>
+<tspan x="130" y="165">    +@@  .@@=  #@#  -@@.                   @@+    </tspan>
+<tspan x="130" y="175">    +@@  .@@=  #@#  -@@.                   @@+    </tspan>
+<tspan x="130" y="185">    +@@   ##-  *#*  -##.                   @@+    </tspan>
+<tspan x="130" y="195">    +@@                                    @@+    </tspan>
+<tspan x="130" y="205">    +@@   @@@@@@@@@@@@@.  .@@@@@@@@@@@@@   @@+    </tspan>
+<tspan x="130" y="215">    +@@   ++++++++++#@@.   ++++++++++#@@.  @@+    </tspan>
+<tspan x="130" y="225">    +@@             =@@.             =@@.  @@+    </tspan>
+<tspan x="130" y="235">    +@@  .@@@@@@@@@@@@@.   %@@@@@@@@@@@@.  @@+    </tspan>
+<tspan x="130" y="245">    +@@   -----=%@@#=-:   .@@*---------:   @@+    </tspan>
+<tspan x="130" y="255">    +@@          -#@%+.   .@@=             @@+    </tspan>
+<tspan x="130" y="265">    +@@            :*%%.  .@@=             @@+    </tspan>
+<tspan x="130" y="275">    +@@               .    ..              @@+    </tspan>
+<tspan x="130" y="285">    +@@+==================================+@@+    </tspan>
+<tspan x="130" y="295">    -########################################-    </tspan>
+<tspan x="130" y="305">                                                  </tspan>
+<tspan x="130" y="315">                                                  </tspan>
 </text>
 
 
